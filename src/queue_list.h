@@ -45,20 +45,20 @@ class QueueList {
 template<typename T>
 QueueList<T>::QueueList () {
   size = 0;       // set the size of queue to zero.
-  head = NULL;    // set the head of the list to point nowhere.
-  tail = NULL;    // set the tail of the list to point nowhere.
+  head = 0;    // set the head of the list to point nowhere.
+  tail = 0;    // set the tail of the list to point nowhere.
 }
 
 // clear the queue (destructor).
 template<typename T>
 QueueList<T>::~QueueList () {
   // deallocate memory space of each node in the list.
-  for (link t = head; t != NULL; head = t) {
+  for (link t = head; t != 0; head = t) {
     t = head->next; delete head;
   }
 
   size = 0;       // set the size of queue to zero.
-  tail = NULL;    // set the tail of the list to point nowhere.
+  tail = 0;    // set the tail of the list to point nowhere.
 }
 
 // push an item to the queue.
@@ -72,7 +72,7 @@ void QueueList<T>::push (const T i) {
 
 
   // set the next of the new node.
-  tail->next = NULL;
+  tail->next = 0;
 
   // store the item to the new node.
   tail->item = i;
@@ -117,7 +117,7 @@ T QueueList<T>::peek () const {
 // check if the queue is empty.
 template<typename T>
 bool QueueList<T>::isEmpty () const {
-  return head == NULL;
+  return head == 0;
 }
 
 // get the number of items in the queue.
