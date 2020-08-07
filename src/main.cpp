@@ -18,9 +18,9 @@
 #define X_DIR_PIN                             13 
 #define X_ENABLE_PIN                          17 
 
-#define M_EN  22//need define
-#define DEV_EN 0 //not used to 3.3v
-#define M_SCTP 0 //not used to 3.3v
+#define M_EN  27 //14 step-dir e0 e4d
+#define DEV_EN 0 //not used 
+#define M_SCTP 0 //not used 
 
 #define CW 0
 #define CCW 1
@@ -51,13 +51,13 @@ bool dir = CW;
 // functions        //
 //////////////////////
 void listDir(){
-server.sendContent("<table style=\"width: 100%; border-color: #000000; margin-left: auto; margin-right: auto;\" border=\1\"><tbody><tr><td style=\"width: 271px;\"><em>Listing file:</em></td><td>Size</td></tr>");
+server.sendContent("<table style=\"width: 100%; border-color: #000000; margin-left: auto; margin-right: auto;\" border=\1\"><tbody><tr><th style=\"width: 271px;\"><em>Listing file:</em></th><th>Size</th></tr>");
 File root = SD.open("/","r");
 File file = root.openNextFile();
 while(file){
 String fname=file.name();
 String fsize=String(file.size());
-server.sendContent("<tr><td><a href=/download?download=" +fname + ">" +fname + "</a><td></td>" + fsize+ "<br></br></td></tr>");
+server.sendContent("<tr><td><a href=/download?download=" +fname + ">" +fname + "</a></td><td>" + fsize+ "</td></tr>");
 file = root.openNextFile();
    }
 server.sendContent("</tbody></table>");
@@ -96,25 +96,26 @@ void lidar_parser(Stream& S) {
 
 void Stepperzero()
 { 
-digitalWrite(X_ENABLE_PIN,HIGH);
+digitalWrite(X_ENABLE_PIN,LOW);
 digitalWrite(X_DIR_PIN, CCW);
   for(int i=0; i<3000; i++){
         digitalWrite(X_STEP_PIN, HIGH);
-        delay(150);
+        delayMicroseconds(300);
         digitalWrite(X_STEP_PIN, LOW);
-        delay(150);
+        delayMicroseconds(300);
     }
+digitalWrite(X_ENABLE_PIN,HIGH);
 HomePage();
 }
 
 void Steppermove(int direction,int nstep, int speed)
-{ digitalWrite(X_ENABLE_PIN,HIGH);
+{ digitalWrite(X_ENABLE_PIN,LOW);
 digitalWrite(X_DIR_PIN, direction);
   for(int i=0; i<nstep; i++){
         digitalWrite(X_STEP_PIN, HIGH);
-        delay(speed);
+        delayMicroseconds(speed);
         digitalWrite(X_STEP_PIN, LOW);
-        delay(speed);
+        delayMicroseconds(speed);
     }
 
 }    
@@ -197,6 +198,7 @@ void restartScan(Stream& S){
                 //start motor in 1.8v
                 //digitalWrite(YDLIDAR_MOTRO_EN, HIGH);
                 S.println("Now YDLIDAR is scanning ......");
+                server.sendContent("start scanning");
                 //vTaskDelay(pdMS_TO_TICKS(1000));
             }else{
                 S.println("start YDLIDAR is failed!  Continue........");
@@ -211,17 +213,21 @@ void restartScan(Stream& S){
 
 void scanlidar()
 { int MAX_POS = int((Microstep*200*0.5*2.5));
-  
+  MAX_POS = 300;
   int prev = 0;
   unsigned long time = 0;
   int samples = 0;
-
-  File file = SD.open("text.xyz", FILE_WRITE);//need change in timestamp.xyz 
+  pos=0;
+  File file = SD.open("/text.xyz", FILE_WRITE);//need change in timestamp.xyz 
   restartScan(Serial);
-    while (pos>=MAX_POS) {           
-     
-                 lidar_parser(Serial1);
+  Serial.println(MAX_POS);
+  Serial.println(pos);
+  server.sendContent("<br>go!<br>");
+    while (pos<=MAX_POS) {           
+                 //Serial.println(pos);
+                 lidar_parser(Serial2);
                  if(isScanning){
+                   
                  if(scans.count() > 0){
                     scanPoint _point;
                     _point = scans.pop();
@@ -251,17 +257,20 @@ void scanlidar()
                         samples = 0;
 
                         pos += 1 - dir*2;
-
-                        Steppermove(dir,1,150);
+                        //Serial.println("step");
+                        Steppermove(dir,1,400);
                         }
                     prev = angle;
-                    }}
                     
-             
+                    }
+                }
+                              
+    }
 digitalWrite(M_EN, LOW);
-digitalWrite(X_ENABLE_PIN, LOW);
+digitalWrite(X_ENABLE_PIN, HIGH);
 file.close();
-}}
+server.sendContent("end<br>");
+}
 
 
 
@@ -290,7 +299,7 @@ void setup()
   disableCore0WDT();
   disableCore1WDT();
   Serial.begin(250000);
-  Serial1.begin(128000);
+  Serial2.begin(128000,SERIAL_8N1,25,26);
   WiFi.mode(WIFI_AP);
   WiFi.softAP(WiFiSSID, WiFiAPPSK);
   
@@ -298,7 +307,7 @@ void setup()
   pinMode(X_STEP_PIN, OUTPUT);
   pinMode(X_DIR_PIN, OUTPUT);
   pinMode(X_ENABLE_PIN, OUTPUT);
-  lidar.begin(Serial1, 128000);
+  lidar.begin(Serial2, 128000);
   SD.begin();
     ///////////////////////////// Server Commands
   server.on("/",         HomePage);
@@ -308,17 +317,18 @@ void setup()
   ///////////////////////////// End of Request commands
   server.begin();
   Serial.println("HTTP server started");
-/////////////////////
-// finding home position   //
-/////////////////////
-Steppermove(CCW,180,150);
-digitalWrite(X_ENABLE_PIN,LOW);
+
+  digitalWrite(M_EN,HIGH);
+  delay(1000);
+  digitalWrite(M_EN,LOW);
+  digitalWrite(X_ENABLE_PIN,HIGH);
+  
 }
 
 void loop() 
 { 
   server.handleClient();
-  delay(1);
+  delayMicroseconds(500);
 }
 
 
